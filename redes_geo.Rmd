@@ -1,0 +1,25 @@
+---
+title: "Redes Geodesicas"
+author: "Fede Tricarico"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#LIBRERIAS
+library<-c("leaflet", "sf", "tidyverse")
+
+```
+
+## Redes Geodesicas POSGAR07
+Aqui algo de texto  
+
+### Importar Shapefile
+
+Importar shapefile localmente, descargado de [IGN](https://www.ign.gob.ar/NuestrasActividades/InformacionGeoespacial/CapasSIG)
+
+
+
+### Santiago del Estero
