@@ -8,18 +8,144 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-#LIBRERIAS
-library<-c("leaflet", "sf", "tidyverse")
 
 ```
 
+Una introduccion a sistemas y marcos de referencia de geoposicionamiento global, y luego sistemas de proyecciones.  
+Presentacion de la Red POSGAR07, a traves de la importacion de archivos almacenados localmente y consumo de geoservicios. 
+
+Setup.
+```{r}
+# podrian ir en setup pero las cargo aqui asi se ven.
+#LIBRERIAS
+library(leaflet)
+library(sf)
+
+```
+
+
 ## Redes Geodesicas POSGAR07
-Aqui algo de texto  
+
+El sistema WGS84-ITFS, a traves del sistema posgar07, y su materializacion en la red y densificacion de la red, en uso desde 2009. Para mas informacion consulte en [IGN - Geodesia](https://www.ign.gob.ar/NuestrasActividades/Geodesia/Introduccion)  
+
 
 ### Importar Shapefile
 
-Importar shapefile localmente, descargado de [IGN](https://www.ign.gob.ar/NuestrasActividades/InformacionGeoespacial/CapasSIG)
+Importar shapefile localmente, descargado de [IGN - Capas SIG](https://www.ign.gob.ar/NuestrasActividades/InformacionGeoespacial/CapasSIG)  
+Si selecciona el formato *shapefile de ESRI* descarga un archivo '.ZIP', que luego incorporamos en una carpeta llamada ´data´ dentro de la carpeta del proyecto.
+
+```{r import shape, message=FALSE, warning=FALSE}
+#importacion de shp y creacion de objeto
+
+redes_posgar <- st_read("~/GitHub/geo/data/red_posgar.shp")
+
+```
+
+```{r explore, collapse=TRUE}
+#Con las funciones str y summary observamos la estructura general del archivo
+# y un resumen de cada campo de registro (o variable) del archivo
+#en ambos observamos el total de registros y cantidad de variables
+#vista y resumen
+str(redes_posgar) #estructura
+summary(redes_posgar) #resumen
+
+```
+
+A estas estaciones permanentes de la red, se suman (o se espera que asi sea) otros puntos que densifican la red permitiendo el acceso a ellos, y mayor cobertura espacial y en tiempo real. Por ello sumamos al proyecto la Red de Densificacion.  
+  
+```{r message=FALSE, warning=FALSE}
+redes_dens_posgar <- st_read("~/Github/geo/data/red_densificacion_posgar.shp")
+```
+
+### Importar desde Geoservicios
+
+Tambien podemos importar estos vectoriales consumiendo Geoservicios WFS de IGN. Copiamos el acceso a los geoservicios y luego seleccionamos los vectoriales de nuestro interes.  
+El beneficio directo reside en no usar espacio de almacenamiento local (esto es importante cuando usamos grandes cantidades de datos), mientras que, basados en los principios de 'interoperabilidad', nos aseguramos contar con informacion clara, suficiente, y actualizada.  
+Los inconvenientes mas plausibles, derivan de los problemas que pueden ocasionar la falta de mantenimiento de los proyectos de los proveedores, lo que haría que no contemos con la información cuando la necesitemos.
+
+### Mapa web
+
+Con leaflet podemos crear una interfaz web interactiva de un mapa, incorporar a este el arbol de capas, y editor los popup, entre otras cosas. Para enrriquecer la interfaz y experiencia del usuario, seria recomendable desarrollar un [shinyapp](https://shiny.posit.co/)  
+
+#### Mapa base
+
+Para visualizar en un mapa las geometrias, antes importaremos los "*Mapas Base*" desarrollados por IGN, en sus multiples presentaciones y estilos. Mediante geservicios se importa un url a un .png que nos da la imagen de fondo. Para mas recursos, vea [IGN - OGC - Mapas base](https://www.ign.gob.ar/NuestrasActividades/InformacionGeoespacial/ServiciosOGC)  
+Otros servicios como OpenStreetMap, Carto, Google ofrecen informacion relevante, pero denominan a las Islas Malvinas como FlakLands, o tiene otras nomenclaturas no adecuadas para Hispanohablante. 
+
+```{r}
+
+# mapas base
+
+ArgenMAP <- 'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png'
+
+ArgenMAP_oscuro <-'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/argenmap_oscuro@EPSG%3A3857@png/{z}/{x}/{-y}.png'
+
+ArgenMAP_gris <- 'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png'
+
+ArgenMAP_topo <- 'https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_topo@EPSG%3A3857@png/{z}/{x}/{-y}.png'
+
+
+```
+
+Para agregar capas base de otros proveedores, puede usar la funcion addProvidersTiles(providers$la_capa_que_le_interese). Consulte y previsualice los estilos que le interese en [leaflet - extras - demo](https://leaflet-extras.github.io/leaflet-providers/preview/)  
+
+#### Cargar capas
+
+Ahora que tenemos las geometrias y el mapa base podemos representarlos en una interfaz interactiva, leaflet.Para mas usos del desarrollo 'leaflet' en R, consulte en Github [leaflet](https://rstudio.github.io/leaflet/articles/leaflet.html)  
+
+```{r}
+
+mapa_red <- leaflet() %>%                                 #creamos el objeto
+  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro") %>% #capa base
+  addCircleMarkers(data = redes_posgar,
+                   color = "blue",
+                   radius = 0.5, 
+                   group = "Red POSGAR07") %>%            #capas de puntos
+  addCircleMarkers(data = redes_dens_posgar,
+                   color = "lightblue",
+                   radius = 0.5,
+                   group = "Red Densificacion POSGAR07") %>% 
+  addLayersControl(position = "topright", 
+                   overlayGroups = c("Red POSGAR07", 
+                                     "Red Densificacion POSGAR07",
+                                     "ArgenMAP Oscuro"
+                                     ))            # menu de capas
+```
+
+Acabamos de crear un mapa, el mismo tiene el mapa base, dos capas de puntos y el menu navegable. Podemos visualizar solo escribiendo el nombre  
+
+```{r}
+mapa_red
+```
+Agregemos popups al mapa para indentificar cada punto al seleccionar
+
+```{r}
+
+mapa_red <- leaflet() %>%                                 #creamos el objeto
+  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro") %>% #capa base
+  addCircleMarkers(data = redes_posgar,
+                   color = "blue",
+                   radius = 0.5, 
+                   popup = ~paste("Nom: ", redes_posgar$nomenclatu
+                                  ),
+                   group = "Red POSGAR07") %>%            #capas de puntos
+  addCircleMarkers(data = redes_dens_posgar,
+                   color = "lightblue",
+                   radius = 0.5,
+                   popup = ~paste("Nom: ", redes_posgar$nomenclatu
+                                  ),
+                   group = "Red Densificacion POSGAR07") %>% 
+  addLayersControl(position = "topright", 
+                   overlayGroups = c("Red POSGAR07", 
+                                     "Red Densificacion POSGAR07",
+                                     "ArgenMAP Oscuro"
+                                     ))            # menu de capas
+mapa_red
+```
 
 
 
 ### Santiago del Estero
+
+POSGAR07 y Faja4, Sistemas de proyeccion local y global (WGS, Pseudomercator), ...  RAMSAC-NTRIP, Base total IGN 'TERO' 
+
