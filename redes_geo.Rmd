@@ -20,13 +20,15 @@ Setup.
 #LIBRERIAS
 library(leaflet)
 library(sf)
-
+library(rmarkdown)
+library(tidyverse)
+library(ggplot2)
 ```
 
 
 ## Redes Geodesicas POSGAR07
 
-El sistema WGS84-ITFS, a traves del sistema posgar07, y su materializacion en la red y densificacion de la red, en uso desde 2009. Para mas informacion consulte en [IGN - Geodesia](https://www.ign.gob.ar/NuestrasActividades/Geodesia/Introduccion)  
+El sistema {WGS84-ITFS}, a traves del sistema posgar07, y su materializacion en la red y densificacion de la red, en uso desde 2009. Para mas informacion consulte en [IGN - Geodesia](https://www.ign.gob.ar/NuestrasActividades/Geodesia/Introduccion)  
 
 
 ### Importar Shapefile
@@ -50,6 +52,28 @@ str(redes_posgar) #estructura
 summary(redes_posgar) #resumen
 
 ```
+
+#### Analisis exploratorio
+
+con libreria 'Tidyverse' puede ademas de manipular consultar a la tabla de registros, al igual que otros motores de bases relacionales (SQL).
+
+Analicemos el sistema de categorias de las variables nominales, y su distribucion.
+
+```{r caracter, collapse=FALSE}
+#Devuelve los valores unicos/distintos de una var string/text
+
+unique(redes_posgar$estado)
+#recode
+
+```
+Se observa la duplicacion de registro "Destruído!=Destruido". luego valores perdidos 'NAs'. Por lo que podria asumirse que "sin Novedad" es la condicion esperable de una base en funcionamiento. Aunque habria que considerar la fecha de la ultima revision 'ultima_vis'.
+
+Hay que pasar a fecha y observar su continuidad.
+
+```{r}
+class(redes_posgar$ultima_vis)
+```
+
 
 A estas estaciones permanentes de la red, se suman (o se espera que asi sea) otros puntos que densifican la red permitiendo el acceso a ellos, y mayor cobertura espacial y en tiempo real. Por ello sumamos al proyecto la Red de Densificacion.  
   
@@ -96,7 +120,8 @@ Ahora que tenemos las geometrias y el mapa base podemos representarlos en una in
 ```{r}
 
 mapa_red <- leaflet() %>%                                 #creamos el objeto
-  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro") %>% #capa base
+  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro") %>%
+  addTiles(ArgenMAP, group = "ArgenMAP") %>%#capa base
   addCircleMarkers(data = redes_posgar,
                    color = "blue",
                    radius = 0.5, 
@@ -106,6 +131,7 @@ mapa_red <- leaflet() %>%                                 #creamos el objeto
                    radius = 0.5,
                    group = "Red Densificacion POSGAR07") %>% 
   addLayersControl(position = "topright", 
+                   baseGroups = c("ArgenMAP Oscuro", "ArgenMAP"),
                    overlayGroups = c("Red POSGAR07", 
                                      "Red Densificacion POSGAR07",
                                      "ArgenMAP Oscuro"
@@ -122,23 +148,25 @@ Agregemos popups al mapa para indentificar cada punto al seleccionar
 ```{r}
 
 mapa_red <- leaflet() %>%                                 #creamos el objeto
-  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro") %>% #capa base
+  addTiles(ArgenMAP_oscuro, group = "ArgenMAP Oscuro", attribution = "IGN") %>%
+  addTiles(ArgenMAP, group = "ArgenMAP", attribution = "IGN") %>%
+  addProviderTiles(providers$OpenStreetMap, group = "OSM") %>% #capas base
   addCircleMarkers(data = redes_posgar,
                    color = "blue",
-                   radius = 0.5, 
+                   radius = 0.8, 
                    popup = ~paste("Nom: ", redes_posgar$nomenclatu
                                   ),
                    group = "Red POSGAR07") %>%            #capas de puntos
   addCircleMarkers(data = redes_dens_posgar,
                    color = "lightblue",
-                   radius = 0.5,
+                   radius = 0.8,
                    popup = ~paste("Nom: ", redes_posgar$nomenclatu
                                   ),
                    group = "Red Densificacion POSGAR07") %>% 
   addLayersControl(position = "topright", 
+                   baseGroups = c("ArgenMAP", "ArgenMAP Oscuro", "OSM"),
                    overlayGroups = c("Red POSGAR07", 
                                      "Red Densificacion POSGAR07",
-                                     "ArgenMAP Oscuro"
                                      ))            # menu de capas
 mapa_red
 ```
